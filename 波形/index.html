@@ -1,0 +1,1339 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Waveform Spectrum Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111317;
+      --panel: #1a1d23;
+      --panel-2: #20242c;
+      --ink: #eef2f4;
+      --muted: #aeb7bd;
+      --line: #343a44;
+      --accent: #4bc6b9;
+      --accent-2: #f2b84b;
+      --accent-3: #d86a8c;
+      --good: #8bd17c;
+      --warn: #ffcf6a;
+      --shadow: rgba(0, 0, 0, 0.32);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: #15181d;
+      box-shadow: 0 10px 28px var(--shadow);
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 14px 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: 0;
+      font-weight: 720;
+    }
+
+    .file-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .file-label {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 0 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .file-label input {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .status {
+      color: var(--muted);
+      min-width: 170px;
+      max-width: 38vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 310px minmax(0, 1fr);
+      min-height: 0;
+    }
+
+    aside {
+      border-right: 1px solid var(--line);
+      background: #171a20;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .controls {
+      display: grid;
+      gap: 16px;
+    }
+
+    fieldset {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 0;
+      background: var(--panel);
+    }
+
+    legend {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 0 6px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-block: 10px;
+    }
+
+    label:first-of-type {
+      margin-top: 2px;
+    }
+
+    .value {
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    select,
+    input[type="number"] {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      background: #12151a;
+      padding: 0 9px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .segmented button {
+      border: 0;
+      min-height: 34px;
+      background: #12151a;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .segmented button + button {
+      border-left: 1px solid var(--line);
+    }
+
+    .segmented button.active {
+      color: #08100f;
+      background: var(--accent);
+      font-weight: 700;
+    }
+
+    .content {
+      min-width: 0;
+      overflow: auto;
+      padding: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 42px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      background: #0e1014;
+    }
+
+    canvas {
+      width: 100%;
+      display: block;
+      background: #0e1014;
+    }
+
+    #waveCanvas {
+      height: 180px;
+    }
+
+    .waveform-panel.expanded #waveCanvas {
+      height: 420px;
+    }
+
+    #spectrumCanvas,
+    #spectrogramCanvas {
+      height: 300px;
+    }
+
+    #envelopeCanvas {
+      height: 230px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #13161b;
+      min-width: 0;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 18px;
+      line-height: 1.15;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      text-align: right;
+      padding: 8px 10px;
+      border-top: 1px solid var(--line);
+      font-variant-numeric: tabular-nums;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      background: #14171c;
+    }
+
+    .empty {
+      padding: 28px 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .icon {
+      inline-size: 18px;
+      block-size: 18px;
+      flex: none;
+    }
+
+    @media (max-width: 980px) {
+      main,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .file-row {
+        justify-content: flex-start;
+      }
+
+      .status {
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .content,
+      aside {
+        padding: 10px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      #spectrumCanvas,
+      #spectrogramCanvas {
+        height: 240px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="topbar">
+        <h1>Waveform Spectrum Lab</h1>
+        <div class="file-row">
+          <label class="file-label" title="音声ファイルを選択">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M12 3v12"></path>
+              <path d="m7 8 5-5 5 5"></path>
+              <path d="M5 15v4h14v-4"></path>
+            </svg>
+            <span>ファイル</span>
+            <input id="fileInput" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.flac,.ogg">
+          </label>
+          <div id="status" class="status">未読込</div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <aside>
+        <div class="controls">
+          <fieldset>
+            <legend>解析</legend>
+            <label>
+              <span>表示 <span id="modeText" class="value">波形</span></span>
+              <div class="segmented" role="tablist" aria-label="表示">
+                <button type="button" data-mode="waveform" class="active" title="波形">WAV</button>
+                <button type="button" data-mode="spectrum" title="スペクトル">FFT</button>
+                <button type="button" data-mode="spectrogram" title="スペクトログラム">SGR</button>
+                <button type="button" data-mode="envelope" title="ADSR">ADSR</button>
+              </div>
+            </label>
+            <label>
+              <span>中心時刻 <span id="timeValue" class="value">0.000 s</span></span>
+              <input id="timeSlider" type="range" min="0" max="0" step="0.001" value="0">
+            </label>
+            <label>
+              <span>波形ズーム <span id="zoomValue" class="value">1x</span></span>
+              <input id="waveZoom" type="range" min="1" max="64" step="1" value="1">
+            </label>
+            <label>
+              <span>振幅 <span id="ampValue" class="value">1.0x</span></span>
+              <input id="waveAmp" type="range" min="1" max="8" step="0.5" value="1">
+            </label>
+            <label>
+              <span>波形高さ <span id="heightValue" class="value">420 px</span></span>
+              <input id="waveHeight" type="range" min="220" max="720" step="20" value="420">
+            </label>
+            <label>
+              <span>横軸目盛 <span id="gridValue" class="value">3</span></span>
+              <input id="timeGrid" type="range" min="1" max="5" step="1" value="3">
+            </label>
+            <label>
+              <span>FFT窓</span>
+              <select id="fftSize">
+                <option value="2048">2048</option>
+                <option value="4096" selected>4096</option>
+                <option value="8192">8192</option>
+                <option value="16384">16384</option>
+                <option value="32768">32768</option>
+              </select>
+            </label>
+            <label>
+              <span>最大周波数 <span id="maxFreqValue" class="value">8000 Hz</span></span>
+              <input id="maxFreq" type="range" min="1000" max="22050" step="500" value="8000">
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>検出</legend>
+            <label>
+              <span>ピーク数 <span id="peakCountValue" class="value">12</span></span>
+              <input id="peakCount" type="range" min="4" max="32" step="1" value="12">
+            </label>
+            <label>
+              <span>しきい値 <span id="thresholdValue" class="value">-48 dB</span></span>
+              <input id="peakThreshold" type="range" min="-80" max="-18" step="1" value="-48">
+            </label>
+            <label>
+              <span>ADSR感度 <span id="adsrValue" class="value">8%</span></span>
+              <input id="adsrThreshold" type="range" min="2" max="30" step="1" value="8">
+            </label>
+          </fieldset>
+        </div>
+      </aside>
+
+      <section class="content">
+        <div class="grid">
+          <div class="stack">
+            <div id="wavePanel" class="panel waveform-panel expanded">
+              <div class="panel-title">
+                <span>波形</span>
+                <span id="fileMeta">--</span>
+              </div>
+              <div class="canvas-wrap"><canvas id="waveCanvas"></canvas></div>
+            </div>
+
+            <div id="spectrumPanel" class="panel" hidden>
+              <div class="panel-title">
+                <span>スペクトル</span>
+                <span id="spectrumMeta">--</span>
+              </div>
+              <div class="canvas-wrap"><canvas id="spectrumCanvas"></canvas></div>
+            </div>
+
+            <div id="spectrogramPanel" class="panel" hidden>
+              <div class="panel-title">
+                <span>スペクトログラム</span>
+                <span id="spectrogramMeta">--</span>
+              </div>
+              <div class="canvas-wrap"><canvas id="spectrogramCanvas"></canvas></div>
+            </div>
+
+            <div id="envelopePanel" class="panel" hidden>
+              <div class="panel-title">
+                <span>ADSR</span>
+                <span id="envelopeMeta">--</span>
+              </div>
+              <div class="canvas-wrap"><canvas id="envelopeCanvas"></canvas></div>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="panel">
+              <div class="panel-title"><span>推定値</span></div>
+              <div class="stats">
+                <div class="metric"><span>基音</span><strong id="fundamental">--</strong></div>
+                <div class="metric"><span>音名</span><strong id="noteName">--</strong></div>
+                <div class="metric"><span>Attack</span><strong id="attack">--</strong></div>
+                <div class="metric"><span>Decay</span><strong id="decay">--</strong></div>
+                <div class="metric"><span>Sustain</span><strong id="sustain">--</strong></div>
+                <div class="metric"><span>Release</span><strong id="release">--</strong></div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-title"><span>ピーク / 倍音候補</span></div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>倍音</th>
+                    <th>Hz</th>
+                    <th>dB</th>
+                    <th>差</th>
+                  </tr>
+                </thead>
+                <tbody id="peaksTable">
+                  <tr><td colspan="4" class="empty">--</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      audioBuffer: null,
+      mono: null,
+      sampleRate: 44100,
+      duration: 0,
+      fileName: "",
+      spectrum: null,
+      peaks: [],
+      adsr: null,
+      mode: "waveform"
+    };
+
+    const els = {
+      fileInput: document.getElementById("fileInput"),
+      status: document.getElementById("status"),
+      fileMeta: document.getElementById("fileMeta"),
+      spectrumMeta: document.getElementById("spectrumMeta"),
+      spectrogramMeta: document.getElementById("spectrogramMeta"),
+      envelopeMeta: document.getElementById("envelopeMeta"),
+      timeSlider: document.getElementById("timeSlider"),
+      timeValue: document.getElementById("timeValue"),
+      fftSize: document.getElementById("fftSize"),
+      maxFreq: document.getElementById("maxFreq"),
+      maxFreqValue: document.getElementById("maxFreqValue"),
+      peakCount: document.getElementById("peakCount"),
+      peakCountValue: document.getElementById("peakCountValue"),
+      peakThreshold: document.getElementById("peakThreshold"),
+      thresholdValue: document.getElementById("thresholdValue"),
+      adsrThreshold: document.getElementById("adsrThreshold"),
+      adsrValue: document.getElementById("adsrValue"),
+      waveZoom: document.getElementById("waveZoom"),
+      zoomValue: document.getElementById("zoomValue"),
+      waveAmp: document.getElementById("waveAmp"),
+      ampValue: document.getElementById("ampValue"),
+      waveHeight: document.getElementById("waveHeight"),
+      heightValue: document.getElementById("heightValue"),
+      timeGrid: document.getElementById("timeGrid"),
+      gridValue: document.getElementById("gridValue"),
+      modeText: document.getElementById("modeText"),
+      waveCanvas: document.getElementById("waveCanvas"),
+      spectrumCanvas: document.getElementById("spectrumCanvas"),
+      spectrogramCanvas: document.getElementById("spectrogramCanvas"),
+      envelopeCanvas: document.getElementById("envelopeCanvas"),
+      wavePanel: document.getElementById("wavePanel"),
+      spectrumPanel: document.getElementById("spectrumPanel"),
+      spectrogramPanel: document.getElementById("spectrogramPanel"),
+      envelopePanel: document.getElementById("envelopePanel"),
+      peaksTable: document.getElementById("peaksTable"),
+      fundamental: document.getElementById("fundamental"),
+      noteName: document.getElementById("noteName"),
+      attack: document.getElementById("attack"),
+      decay: document.getElementById("decay"),
+      sustain: document.getElementById("sustain"),
+      release: document.getElementById("release")
+    };
+
+    const modeNames = {
+      waveform: "波形",
+      spectrum: "スペクトル",
+      spectrogram: "スペクトログラム",
+      envelope: "ADSR"
+    };
+
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    function fitCanvas(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(320, Math.floor(rect.width * dpr));
+      const height = Math.max(160, Math.floor(rect.height * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, width: rect.width, height: rect.height };
+    }
+
+    function clearCanvas(canvas, label) {
+      const { ctx, width, height } = fitCanvas(canvas);
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#0e1014";
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = "#8f9aa3";
+      ctx.font = "13px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(label, width / 2, height / 2);
+    }
+
+    function drawGrid(ctx, width, height, xLines = 8, yLines = 4) {
+      ctx.strokeStyle = "#252a32";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= xLines; i++) {
+        const x = (width * i) / xLines;
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+      }
+      for (let i = 0; i <= yLines; i++) {
+        const y = (height * i) / yLines;
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+      }
+      ctx.stroke();
+    }
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds)) return "--";
+      if (seconds < 1) return `${(seconds * 1000).toFixed(1)} ms`;
+      return `${seconds.toFixed(3)} s`;
+    }
+
+    function formatDb(db) {
+      if (!Number.isFinite(db)) return "--";
+      return `${db.toFixed(1)} dB`;
+    }
+
+    function freqToNote(freq) {
+      if (!Number.isFinite(freq) || freq <= 0) return "--";
+      const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+      const cents = Math.round(1200 * Math.log2(freq / (440 * Math.pow(2, (midi - 69) / 12))));
+      return `${names[(midi + 1200) % 12]}${Math.floor(midi / 12) - 1} ${cents >= 0 ? "+" : ""}${cents}c`;
+    }
+
+    function hann(i, size) {
+      return 0.5 * (1 - Math.cos((2 * Math.PI * i) / (size - 1)));
+    }
+
+    function fft(real, imag) {
+      const n = real.length;
+      let j = 0;
+      for (let i = 1; i < n; i++) {
+        let bit = n >> 1;
+        while (j & bit) {
+          j ^= bit;
+          bit >>= 1;
+        }
+        j ^= bit;
+        if (i < j) {
+          [real[i], real[j]] = [real[j], real[i]];
+          [imag[i], imag[j]] = [imag[j], imag[i]];
+        }
+      }
+      for (let len = 2; len <= n; len <<= 1) {
+        const angle = (-2 * Math.PI) / len;
+        const wLenR = Math.cos(angle);
+        const wLenI = Math.sin(angle);
+        for (let i = 0; i < n; i += len) {
+          let wr = 1;
+          let wi = 0;
+          for (let k = 0; k < len / 2; k++) {
+            const uR = real[i + k];
+            const uI = imag[i + k];
+            const vR = real[i + k + len / 2] * wr - imag[i + k + len / 2] * wi;
+            const vI = real[i + k + len / 2] * wi + imag[i + k + len / 2] * wr;
+            real[i + k] = uR + vR;
+            imag[i + k] = uI + vI;
+            real[i + k + len / 2] = uR - vR;
+            imag[i + k + len / 2] = uI - vI;
+            const nextR = wr * wLenR - wi * wLenI;
+            wi = wr * wLenI + wi * wLenR;
+            wr = nextR;
+          }
+        }
+      }
+    }
+
+    function makeMono(buffer) {
+      const length = buffer.length;
+      const mono = new Float32Array(length);
+      for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+        const data = buffer.getChannelData(ch);
+        for (let i = 0; i < length; i++) mono[i] += data[i] / buffer.numberOfChannels;
+      }
+      return mono;
+    }
+
+    function analyzeSpectrum(centerTime = 0) {
+      if (!state.mono) return null;
+      const size = Number(els.fftSize.value);
+      const sampleRate = state.sampleRate;
+      const center = Math.floor(centerTime * sampleRate);
+      const start = Math.max(0, Math.min(state.mono.length - size, center - Math.floor(size / 2)));
+      const real = new Float64Array(size);
+      const imag = new Float64Array(size);
+      for (let i = 0; i < size; i++) {
+        real[i] = (state.mono[start + i] || 0) * hann(i, size);
+      }
+      fft(real, imag);
+      const bins = Math.floor(size / 2);
+      const freqs = new Float64Array(bins);
+      const mags = new Float64Array(bins);
+      let maxMag = 0;
+      for (let i = 1; i < bins; i++) {
+        const mag = Math.hypot(real[i], imag[i]) / size;
+        mags[i] = mag;
+        if (mag > maxMag) maxMag = mag;
+        freqs[i] = (i * sampleRate) / size;
+      }
+      const db = new Float64Array(bins);
+      for (let i = 0; i < bins; i++) db[i] = 20 * Math.log10((mags[i] + 1e-12) / (maxMag + 1e-12));
+      state.spectrum = { freqs, mags, db, size, start, centerTime };
+      state.peaks = findPeaks(state.spectrum);
+      return state.spectrum;
+    }
+
+    function findPeaks(spectrum) {
+      const maxFreq = Number(els.maxFreq.value);
+      const threshold = Number(els.peakThreshold.value);
+      const candidates = [];
+      for (let i = 2; i < spectrum.db.length - 2; i++) {
+        const f = spectrum.freqs[i];
+        if (f < 20 || f > maxFreq) continue;
+        const d = spectrum.db[i];
+        if (d < threshold) continue;
+        if (d > spectrum.db[i - 1] && d >= spectrum.db[i + 1] && d > spectrum.db[i - 2] && d >= spectrum.db[i + 2]) {
+          const left = spectrum.db[i - 1];
+          const mid = spectrum.db[i];
+          const right = spectrum.db[i + 1];
+          const denom = left - 2 * mid + right;
+          const offset = denom === 0 ? 0 : 0.5 * (left - right) / denom;
+          const refinedFreq = spectrum.freqs[i] + offset * (state.sampleRate / spectrum.size);
+          candidates.push({ freq: refinedFreq, db: d, bin: i });
+        }
+      }
+      return candidates
+        .sort((a, b) => b.db - a.db)
+        .slice(0, Number(els.peakCount.value))
+        .sort((a, b) => a.freq - b.freq);
+    }
+
+    function estimateFundamental(peaks) {
+      if (!peaks.length) return null;
+      const sortedByLevel = [...peaks].sort((a, b) => b.db - a.db).slice(0, Math.min(8, peaks.length));
+      let best = null;
+      for (const candidate of sortedByLevel) {
+        for (let div = 1; div <= 6; div++) {
+          const f0 = candidate.freq / div;
+          if (f0 < 20 || f0 > 2000) continue;
+          let score = 0;
+          let matched = 0;
+          for (const peak of peaks) {
+            const harmonic = Math.round(peak.freq / f0);
+            if (harmonic < 1 || harmonic > 24) continue;
+            const target = harmonic * f0;
+            const cents = Math.abs(1200 * Math.log2(peak.freq / target));
+            if (cents < 45) {
+              matched++;
+              score += (1 - cents / 45) * (1 + Math.max(-60, peak.db) / 60);
+            }
+          }
+          score += matched * 0.45;
+          if (!best || score > best.score) best = { freq: f0, score };
+        }
+      }
+      return best && best.score > 1.2 ? best.freq : peaks[0].freq;
+    }
+
+    function analyzeEnvelope() {
+      if (!state.mono) return null;
+      const sampleRate = state.sampleRate;
+      const win = Math.max(64, Math.floor(sampleRate * 0.01));
+      const hop = Math.max(32, Math.floor(sampleRate * 0.005));
+      const frames = Math.max(1, Math.floor((state.mono.length - win) / hop));
+      const env = new Float64Array(frames);
+      let max = 0;
+      for (let i = 0; i < frames; i++) {
+        const start = i * hop;
+        let sum = 0;
+        for (let j = 0; j < win; j++) {
+          const v = state.mono[start + j] || 0;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / win);
+        env[i] = rms;
+        if (rms > max) max = rms;
+      }
+      if (max > 0) {
+        for (let i = 0; i < env.length; i++) env[i] /= max;
+      }
+      const smooth = new Float64Array(env.length);
+      const radius = 3;
+      for (let i = 0; i < env.length; i++) {
+        let sum = 0;
+        let count = 0;
+        for (let j = -radius; j <= radius; j++) {
+          const idx = i + j;
+          if (idx >= 0 && idx < env.length) {
+            sum += env[idx];
+            count++;
+          }
+        }
+        smooth[i] = sum / count;
+      }
+      const threshold = Number(els.adsrThreshold.value) / 100;
+      let onset = smooth.findIndex((v) => v >= threshold);
+      if (onset < 0) onset = 0;
+      let releaseEnd = smooth.length - 1;
+      for (let i = smooth.length - 1; i >= 0; i--) {
+        if (smooth[i] >= threshold) {
+          releaseEnd = i;
+          break;
+        }
+      }
+      let peak = onset;
+      for (let i = onset; i <= releaseEnd; i++) {
+        if (smooth[i] > smooth[peak]) peak = i;
+      }
+      const active = Math.max(1, releaseEnd - onset);
+      const sustainA = Math.min(releaseEnd, onset + Math.floor(active * 0.38));
+      const sustainB = Math.min(releaseEnd, onset + Math.floor(active * 0.75));
+      const sustainValues = Array.from(smooth.slice(sustainA, Math.max(sustainA + 1, sustainB))).sort((a, b) => a - b);
+      const sustainLevel = sustainValues.length ? sustainValues[Math.floor(sustainValues.length * 0.5)] : smooth[releaseEnd];
+      let decayEnd = releaseEnd;
+      for (let i = peak; i <= releaseEnd; i++) {
+        if (smooth[i] <= Math.max(threshold, sustainLevel * 1.08)) {
+          decayEnd = i;
+          break;
+        }
+      }
+      let releaseStart = sustainB;
+      for (let i = sustainB; i <= releaseEnd; i++) {
+        if (smooth[i] <= Math.max(threshold, sustainLevel * 0.82)) {
+          releaseStart = i;
+          break;
+        }
+      }
+      const toTime = (frame) => (frame * hop) / sampleRate;
+      state.adsr = {
+        env: smooth,
+        hop,
+        onset,
+        peak,
+        decayEnd,
+        releaseStart,
+        releaseEnd,
+        sustainLevel,
+        attack: Math.max(0, toTime(peak) - toTime(onset)),
+        decay: Math.max(0, toTime(decayEnd) - toTime(peak)),
+        release: Math.max(0, toTime(releaseEnd) - toTime(releaseStart)),
+        activeTime: Math.max(0, toTime(releaseEnd) - toTime(onset))
+      };
+      return state.adsr;
+    }
+
+    function getWaveViewport() {
+      const zoom = Math.max(1, Number(els.waveZoom.value));
+      const duration = Math.max(0.001, state.duration || 0.001);
+      const visibleDuration = duration / zoom;
+      const center = Math.min(duration, Math.max(0, Number(els.timeSlider.value)));
+      let startTime = center - visibleDuration / 2;
+      startTime = Math.min(Math.max(0, startTime), Math.max(0, duration - visibleDuration));
+      return {
+        zoom,
+        startTime,
+        endTime: Math.min(duration, startTime + visibleDuration),
+        visibleDuration
+      };
+    }
+
+    function niceTimeStep(seconds) {
+      const base = Math.pow(10, Math.floor(Math.log10(seconds)));
+      const normalized = seconds / base;
+      if (normalized <= 1) return base;
+      if (normalized <= 2) return 2 * base;
+      if (normalized <= 5) return 5 * base;
+      return 10 * base;
+    }
+
+    function formatAxisTime(seconds) {
+      if (seconds < 1) return `${Math.round(seconds * 1000)}ms`;
+      return `${seconds.toFixed(seconds < 10 ? 2 : 1)}s`;
+    }
+
+    function updateWaveControlLabels() {
+      els.zoomValue.textContent = `${els.waveZoom.value}x`;
+      els.ampValue.textContent = `${Number(els.waveAmp.value).toFixed(1)}x`;
+      els.heightValue.textContent = `${els.waveHeight.value} px`;
+      els.gridValue.textContent = els.timeGrid.value;
+      els.waveCanvas.style.height = `${els.waveHeight.value}px`;
+    }
+
+    function drawWaveGrid(ctx, width, height, viewport) {
+      const density = Number(els.timeGrid.value);
+      const majorCount = 6 + density * 3;
+      const majorStep = niceTimeStep(viewport.visibleDuration / majorCount);
+      const minorStep = majorStep / 5;
+      const firstMinor = Math.ceil(viewport.startTime / minorStep) * minorStep;
+
+      ctx.lineWidth = 1;
+      for (let t = firstMinor; t <= viewport.endTime + minorStep / 2; t += minorStep) {
+        const x = ((t - viewport.startTime) / viewport.visibleDuration) * width;
+        const isMajor = Math.abs(t / majorStep - Math.round(t / majorStep)) < 1e-6;
+        ctx.strokeStyle = isMajor ? "#343a44" : "#20252d";
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "#252a32";
+      for (let i = 0; i <= 4; i++) {
+        const y = (height * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "#8f9aa3";
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      const firstMajor = Math.ceil(viewport.startTime / majorStep) * majorStep;
+      for (let t = firstMajor; t <= viewport.endTime + majorStep / 2; t += majorStep) {
+        const x = ((t - viewport.startTime) / viewport.visibleDuration) * width;
+        if (x > 28 && x < width - 28) ctx.fillText(formatAxisTime(t), x, height - 8);
+      }
+    }
+
+    function drawWaveform() {
+      if (!state.mono) {
+        clearCanvas(els.waveCanvas, "--");
+        return;
+      }
+      const { ctx, width, height } = fitCanvas(els.waveCanvas);
+      ctx.fillStyle = "#0e1014";
+      ctx.fillRect(0, 0, width, height);
+      const mid = height / 2;
+      const amp = Number(els.waveAmp.value);
+      const viewport = getWaveViewport();
+      drawWaveGrid(ctx, width, height, viewport);
+      const startSample = Math.max(0, Math.floor(viewport.startTime * state.sampleRate));
+      const endSample = Math.min(state.mono.length, Math.ceil(viewport.endTime * state.sampleRate));
+      const sampleSpan = Math.max(1, endSample - startSample);
+
+      ctx.strokeStyle = "#3f4652";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, mid);
+      ctx.lineTo(width, mid);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#4bc6b9";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      const samplesPerPixel = Math.max(1, Math.floor(sampleSpan / width));
+      for (let x = 0; x < width; x++) {
+        const start = startSample + Math.floor((x / width) * sampleSpan);
+        const stop = Math.min(endSample, start + samplesPerPixel);
+        let min = 1;
+        let max = -1;
+        for (let i = start; i < stop; i++) {
+          const v = state.mono[i] || 0;
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+        const y1 = Math.max(0, Math.min(height, mid + min * mid * 0.86 * amp));
+        const y2 = Math.max(0, Math.min(height, mid + max * mid * 0.86 * amp));
+        ctx.moveTo(x, y1);
+        ctx.lineTo(x, y2);
+      }
+      ctx.stroke();
+
+      const time = Number(els.timeSlider.value);
+      const x = ((time - viewport.startTime) / viewport.visibleDuration) * width;
+      ctx.strokeStyle = "#f2b84b";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+
+      ctx.fillStyle = "#aeb7bd";
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(`${viewport.startTime.toFixed(3)} s`, 8, height - 8);
+      ctx.fillText(`amp ${amp.toFixed(1)}x`, 8, 18);
+      ctx.textAlign = "right";
+      ctx.fillText(`${viewport.endTime.toFixed(3)} s`, width - 8, height - 8);
+      ctx.fillStyle = "#f2b84b";
+      ctx.fillText(`${time.toFixed(3)} s`, Math.min(width - 8, Math.max(64, x - 8)), 18);
+    }
+
+    function drawSpectrum() {
+      if (!state.spectrum) {
+        clearCanvas(els.spectrumCanvas, "--");
+        return;
+      }
+      const { ctx, width, height } = fitCanvas(els.spectrumCanvas);
+      ctx.fillStyle = "#0e1014";
+      ctx.fillRect(0, 0, width, height);
+      drawGrid(ctx, width, height, 10, 6);
+      const maxFreq = Number(els.maxFreq.value);
+      const minDb = Number(els.peakThreshold.value) - 18;
+      ctx.strokeStyle = "#4bc6b9";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let started = false;
+      for (let i = 1; i < state.spectrum.freqs.length; i++) {
+        const f = state.spectrum.freqs[i];
+        if (f > maxFreq) break;
+        const x = (f / maxFreq) * width;
+        const db = Math.max(minDb, Math.min(0, state.spectrum.db[i]));
+        const y = height - ((db - minDb) / (0 - minDb)) * height;
+        if (!started) {
+          ctx.moveTo(x, y);
+          started = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+
+      const f0 = estimateFundamental(state.peaks);
+      state.peaks.forEach((peak) => {
+        const x = (peak.freq / maxFreq) * width;
+        const db = Math.max(minDb, Math.min(0, peak.db));
+        const y = height - ((db - minDb) / (0 - minDb)) * height;
+        ctx.fillStyle = "#f2b84b";
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (f0) {
+        ctx.strokeStyle = "rgba(216, 106, 140, 0.65)";
+        ctx.lineWidth = 1;
+        for (let h = 1; h * f0 <= maxFreq; h++) {
+          const x = ((h * f0) / maxFreq) * width;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+      }
+
+      ctx.fillStyle = "#aeb7bd";
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("0 Hz", 8, height - 8);
+      ctx.textAlign = "right";
+      ctx.fillText(`${maxFreq} Hz`, width - 8, height - 8);
+    }
+
+    function drawSpectrogram() {
+      if (!state.mono) {
+        clearCanvas(els.spectrogramCanvas, "--");
+        return;
+      }
+      const { ctx, width, height } = fitCanvas(els.spectrogramCanvas);
+      ctx.fillStyle = "#0e1014";
+      ctx.fillRect(0, 0, width, height);
+      const maxFreq = Number(els.maxFreq.value);
+      const fftSize = Math.min(4096, Number(els.fftSize.value));
+      const hop = Math.max(256, Math.floor((state.mono.length - fftSize) / Math.max(1, width)));
+      const columns = Math.max(1, Math.floor((state.mono.length - fftSize) / hop));
+      for (let c = 0; c < columns; c++) {
+        const start = c * hop;
+        const real = new Float64Array(fftSize);
+        const imag = new Float64Array(fftSize);
+        for (let i = 0; i < fftSize; i++) real[i] = (state.mono[start + i] || 0) * hann(i, fftSize);
+        fft(real, imag);
+        let maxMag = 0;
+        const binMax = Math.min(Math.floor((maxFreq * fftSize) / state.sampleRate), fftSize / 2 - 1);
+        const mags = new Float64Array(binMax + 1);
+        for (let b = 1; b <= binMax; b++) {
+          const mag = Math.hypot(real[b], imag[b]) / fftSize;
+          mags[b] = mag;
+          if (mag > maxMag) maxMag = mag;
+        }
+        const x = (c / columns) * width;
+        const nextX = ((c + 1) / columns) * width + 1;
+        for (let b = 1; b <= binMax; b++) {
+          const db = 20 * Math.log10((mags[b] + 1e-12) / (maxMag + 1e-12));
+          const norm = Math.max(0, Math.min(1, (db + 70) / 70));
+          const hue = 205 - norm * 170;
+          const light = 12 + norm * 58;
+          ctx.fillStyle = `hsl(${hue}, ${45 + norm * 35}%, ${light}%)`;
+          const y = height - (b / binMax) * height;
+          const y2 = height - ((b + 1) / binMax) * height;
+          ctx.fillRect(x, y2, nextX - x, Math.max(1, y - y2 + 1));
+        }
+      }
+      drawGrid(ctx, width, height, 8, 4);
+    }
+
+    function drawEnvelope() {
+      if (!state.adsr) {
+        clearCanvas(els.envelopeCanvas, "--");
+        return;
+      }
+      const { ctx, width, height } = fitCanvas(els.envelopeCanvas);
+      ctx.fillStyle = "#0e1014";
+      ctx.fillRect(0, 0, width, height);
+      drawGrid(ctx, width, height, 8, 5);
+      const env = state.adsr.env;
+      ctx.strokeStyle = "#4bc6b9";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      env.forEach((v, i) => {
+        const x = (i / Math.max(1, env.length - 1)) * width;
+        const y = height - v * height * 0.92;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      const markers = [
+        ["A", state.adsr.onset, "#aeb7bd"],
+        ["Peak", state.adsr.peak, "#f2b84b"],
+        ["D", state.adsr.decayEnd, "#8bd17c"],
+        ["R", state.adsr.releaseStart, "#d86a8c"],
+        ["End", state.adsr.releaseEnd, "#aeb7bd"]
+      ];
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      markers.forEach(([name, frame, color]) => {
+        const x = (frame / Math.max(1, env.length - 1)) * width;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.fillText(name, Math.min(width - 18, Math.max(18, x)), 16);
+      });
+
+      const y = height - state.adsr.sustainLevel * height * 0.92;
+      ctx.strokeStyle = "rgba(139, 209, 124, 0.65)";
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function updateStats() {
+      const f0 = estimateFundamental(state.peaks);
+      els.fundamental.textContent = f0 ? `${f0.toFixed(2)} Hz` : "--";
+      els.noteName.textContent = f0 ? freqToNote(f0) : "--";
+      els.attack.textContent = state.adsr ? formatTime(state.adsr.attack) : "--";
+      els.decay.textContent = state.adsr ? formatTime(state.adsr.decay) : "--";
+      els.sustain.textContent = state.adsr ? `${Math.round(state.adsr.sustainLevel * 100)}%` : "--";
+      els.release.textContent = state.adsr ? formatTime(state.adsr.release) : "--";
+      drawPeaksTable(f0);
+    }
+
+    function drawPeaksTable(f0) {
+      if (!state.peaks.length) {
+        els.peaksTable.innerHTML = '<tr><td colspan="4" class="empty">--</td></tr>';
+        return;
+      }
+      els.peaksTable.innerHTML = "";
+      state.peaks.forEach((peak) => {
+        const harmonic = f0 ? Math.max(1, Math.round(peak.freq / f0)) : null;
+        const target = f0 && harmonic ? harmonic * f0 : null;
+        const cents = target ? Math.round(1200 * Math.log2(peak.freq / target)) : null;
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${harmonic ? `${harmonic}x` : "--"}</td>
+          <td>${peak.freq.toFixed(1)}</td>
+          <td>${peak.db.toFixed(1)}</td>
+          <td>${cents === null ? "--" : `${cents >= 0 ? "+" : ""}${cents}c`}</td>
+        `;
+        els.peaksTable.appendChild(row);
+      });
+    }
+
+    function refreshAll(recompute = true) {
+      updateWaveControlLabels();
+      if (!state.mono) {
+        drawWaveform();
+        drawSpectrum();
+        drawSpectrogram();
+        drawEnvelope();
+        return;
+      }
+      els.timeValue.textContent = `${Number(els.timeSlider.value).toFixed(3)} s`;
+      els.maxFreqValue.textContent = `${Number(els.maxFreq.value)} Hz`;
+      els.peakCountValue.textContent = els.peakCount.value;
+      els.thresholdValue.textContent = `${els.peakThreshold.value} dB`;
+      els.adsrValue.textContent = `${els.adsrThreshold.value}%`;
+      if (recompute) {
+        analyzeSpectrum(Number(els.timeSlider.value));
+        analyzeEnvelope();
+      }
+      drawWaveform();
+      drawSpectrum();
+      if (!els.spectrogramPanel.hidden) drawSpectrogram();
+      if (!els.envelopePanel.hidden) drawEnvelope();
+      updateStats();
+      els.spectrumMeta.textContent = `${state.spectrum.size} samples`;
+      els.spectrogramMeta.textContent = `${Number(els.maxFreq.value)} Hz max`;
+      els.envelopeMeta.textContent = `RMS ${Math.round(state.adsr.hop / state.sampleRate * 1000)} ms hop`;
+    }
+
+    async function loadFile(file) {
+      try {
+        els.status.textContent = "読込中...";
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+        state.audioBuffer = buffer;
+        state.mono = makeMono(buffer);
+        state.sampleRate = buffer.sampleRate;
+        state.duration = buffer.duration;
+        state.fileName = file.name;
+        els.timeSlider.max = String(Math.max(0, buffer.duration));
+        els.timeSlider.value = String(Math.min(buffer.duration / 2, buffer.duration));
+        els.status.textContent = file.name;
+        els.fileMeta.textContent = `${buffer.numberOfChannels} ch / ${buffer.sampleRate} Hz / ${buffer.duration.toFixed(2)} s`;
+        refreshAll(true);
+      } catch (error) {
+        console.error(error);
+        els.status.textContent = "読込失敗";
+        alert("このファイル形式はブラウザでデコードできませんでした。wav/mp3/m4a/aac/oggなどを試してください。");
+      }
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      els.modeText.textContent = modeNames[mode];
+      document.querySelectorAll(".segmented button").forEach((button) => {
+        button.classList.toggle("active", button.dataset.mode === mode);
+      });
+      els.wavePanel.classList.toggle("expanded", mode === "waveform");
+      els.spectrumPanel.hidden = mode !== "spectrum";
+      els.spectrogramPanel.hidden = mode !== "spectrogram";
+      els.envelopePanel.hidden = mode !== "envelope";
+      refreshAll(false);
+    }
+
+    window.WaveformSpectrumLab = {
+      loadMono(samples, sampleRate, name = "synthetic.wav") {
+        state.audioBuffer = null;
+        state.mono = samples;
+        state.sampleRate = sampleRate;
+        state.duration = samples.length / sampleRate;
+        state.fileName = name;
+        els.timeSlider.max = String(Math.max(0, state.duration));
+        els.timeSlider.value = String(Math.min(state.duration / 2, state.duration));
+        els.status.textContent = name;
+        els.fileMeta.textContent = `1 ch / ${sampleRate} Hz / ${state.duration.toFixed(2)} s`;
+        refreshAll(true);
+      },
+      getAnalysis() {
+        return {
+          fundamental: els.fundamental.textContent,
+          noteName: els.noteName.textContent,
+          attack: els.attack.textContent,
+          decay: els.decay.textContent,
+          sustain: els.sustain.textContent,
+          release: els.release.textContent,
+          peaks: state.peaks.map((peak) => ({ freq: peak.freq, db: peak.db })),
+          adsr: state.adsr
+            ? {
+                attack: state.adsr.attack,
+                decay: state.adsr.decay,
+                sustainLevel: state.adsr.sustainLevel,
+                release: state.adsr.release
+              }
+            : null
+        };
+      }
+    };
+
+    els.fileInput.addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (file) loadFile(file);
+    });
+
+    [els.timeSlider, els.waveZoom, els.waveAmp, els.waveHeight, els.timeGrid, els.fftSize, els.maxFreq, els.peakCount, els.peakThreshold, els.adsrThreshold].forEach((input) => {
+      input.addEventListener("input", () => refreshAll(true));
+      input.addEventListener("change", () => refreshAll(true));
+    });
+
+    document.querySelectorAll(".segmented button").forEach((button) => {
+      button.addEventListener("click", () => setMode(button.dataset.mode));
+    });
+
+    els.waveCanvas.addEventListener("click", (event) => {
+      if (!state.mono) return;
+      const rect = els.waveCanvas.getBoundingClientRect();
+      const viewport = getWaveViewport();
+      const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+      els.timeSlider.value = String(viewport.startTime + ratio * viewport.visibleDuration);
+      refreshAll(true);
+    });
+
+    window.addEventListener("resize", () => refreshAll(false));
+
+    updateWaveControlLabels();
+    clearCanvas(els.waveCanvas, "--");
+    clearCanvas(els.spectrumCanvas, "--");
+    clearCanvas(els.spectrogramCanvas, "--");
+    clearCanvas(els.envelopeCanvas, "--");
+  </script>
+</body>
+</html>
